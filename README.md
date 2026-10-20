@@ -43,16 +43,20 @@ leukemia-detection-system/
 
 ## LOCAL INSTALLATION & EXECUTION
 1. Clone the Repository:
+
    git clone https://github.com/Abh1goldy/leukemia-detection-system.git
    cd leukemia-detection-system
 
-2. Install Environment Dependencies:
+3. Install Environment Dependencies:
+
    pip install -r requirements.txt
 
-3. Configure Model Checkpoints:
+5. Configure Model Checkpoints:
+
    Ensure your compiled .keras artifact files (model_1_basic.keras, model_2_good.keras, and model_3_best.keras) reside in the root directory. (Note: For cloud deployments, the application dynamically pulls assets via integrated cloud storage fetchers).
 
-4. Initialize the Application:
+7. Initialize the Application:
+
    streamlit run app.py
 
 ## CLINICAL & ACADEMIC DISCLAIMER
