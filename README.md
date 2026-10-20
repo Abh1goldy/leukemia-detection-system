@@ -1,6 +1,6 @@
 # AUTOMATED LEUKEMIA DETECTION SYSTEM
 
-# 🔬 Automated Leukemia Detection System
+### 🔬 Automated Leukemia Detection System
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://leukemia-detection-system-pu8mrz7esk9ymytdagaq5t.streamlit.app/)
 
