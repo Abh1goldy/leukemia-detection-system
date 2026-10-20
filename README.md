@@ -1,5 +1,9 @@
 # AUTOMATED LEUKEMIA DETECTION SYSTEM
 
+# 🔬 Automated Leukemia Detection System
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://leukemia-detection-system-pu8mrz7esk9ymytdagaq5t.streamlit.app/)
+
 ## ABSTRACT & PROJECT ARCHITECTURE
 An advanced, end-to-end deep learning web application engineered for the binary classification of microscopic blood smear cell images as ALL (Acute Lymphoblastic Leukemia - Malignant) versus HEM (Non-malignant / Normal) utilizing the Kaggle C-NMC dataset. Early and precise hematological screening is critical for effective clinical intervention. This repository houses an interactive decision-support system built around three distinct deep learning architectures, incorporating robust preprocessing, class-weight optimization, and automated single-run inference hosted via an interactive Streamlit user interface.
 
