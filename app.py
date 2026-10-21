@@ -19,7 +19,7 @@ MODEL_DRIVE_IDS = {
     'model_3_best.keras': '1-72rwJhrpt_QQssHgxoc0bz4_WelKa4Z'
 }
 
-# Function to download models if they are missing (for Streamlit Cloud)
+# Function to download models if missing
 def download_model_if_needed(filename):
     if not os.path.exists(filename):
         file_id = MODEL_DRIVE_IDS.get(filename)
@@ -31,10 +31,19 @@ def download_model_if_needed(filename):
 # Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: Best", "Model 2: Better", "Model 1: Good")
+    ("Model 3: Best (EfficientNet)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
 )
 
-# Load the selected model with custom_objects to resolve the Lambda layer serialization issue
+# Helper function to get correct preprocessing function per architecture
+def get_preprocess_function(choice):
+    if "Best" in choice or "EfficientNet" in choice:
+        return tf.keras.applications.efficientnet.preprocess_input
+    elif "Better" in choice or "DenseNet" in choice:
+        return tf.keras.applications.densenet.preprocess_input
+    else:
+        return tf.keras.applications.resnet.preprocess_input
+
+# Load the selected model with dynamic custom_objects
 @st.cache_resource
 def load_selected_model(choice):
     if "Best" in choice:
@@ -46,36 +55,41 @@ def load_selected_model(choice):
 
     download_model_if_needed(filename)
     
-    # Pass the preprocess_input function reference into custom_objects to prevent deserialization errors
-    return load_model(filename, custom_objects={'preprocess_input': tf.keras.applications.mobilenet_v2.preprocess_input})
+    # Get the specific preprocessing function for custom object deserialization
+    prep_func = get_preprocess_function(choice)
+    
+    try:
+        return load_model(filename, custom_objects={'preprocess_input': prep_func})
+    except Exception:
+        # Fallback if model doesn't require custom_objects
+        return load_model(filename)
 
 try:
     model = load_selected_model(model_choice)
 except Exception as e:
     st.error(f"Error loading model file. Details: {e}")
 
-# Image uploader widget matching your Colab file input step
+# Image uploader widget
 uploaded_file = st.file_uploader("Choose a single blood cell image (.jpg, .jpeg, .png, .bmp)", type=["jpg", "jpeg", "png", "bmp"])
 
 if uploaded_file is not None:
-    # Open and process the image using PIL exactly like Colab
     image = Image.open(uploaded_file).convert('RGB')
     st.image(image, caption='Uploaded Blood Cell Image', use_column_width=True)
     
-    # Prediction trigger button
     if st.button('Predict Cell Type'):
         with st.spinner('Analyzing cell with single run inference...'):
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
             
-            # Preprocess matching your exact Colab MobileNetV2 pipeline
-            img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+            # Dynamically apply the exact preprocessing function for the selected model
+            preprocess_func = get_preprocess_function(model_choice)
+            img_array = preprocess_func(img_array)
             img_array = np.expand_dims(img_array, axis=0)
             
             # Run prediction
             score = float(model.predict(img_array, verbose=0)[0][0])
             
-        # Display Results matching your Colab evaluation outputs and thresholds
+        # Display Results
         st.subheader("Analysis Results:")
         st.write(f"**Active Model:** {model_choice}")
         st.write(f"**Model score for ALL class:** {score:.4f}")
