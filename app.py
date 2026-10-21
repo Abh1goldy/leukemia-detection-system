@@ -66,10 +66,17 @@ if uploaded_file is not None:
     # Single run prediction button
     if st.button('Predict Cell Type'):
         with st.spinner('Analyzing cell with single run inference...'):
-            # Preprocessing setup matching your notebook training
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
-            img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+            
+            # Apply correct preprocessing based on the selected model architecture
+            if "Best" in model_choice:
+                # EfficientNet preprocessing
+                img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+            else:
+                # Custom CNNs (Good & Better) have built-in Rescaling layers, 
+                # so we pass standard pixel values.
+                pass
                 
             img_array = np.expand_dims(img_array, axis=0)
             
