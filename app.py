@@ -78,10 +78,9 @@ if uploaded_file is not None:
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
             
-            # Apply preprocessing conditionally per model architecture
+            # Apply explicit external preprocessing matching each model's requirements
             if "Best" in model_choice:
-                # Model 3 has Lambda preprocessing built-in; keep raw values
-                pass
+                img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
             elif "Better" in model_choice:
                 img_array = tf.keras.applications.densenet.preprocess_input(img_array)
             else:
