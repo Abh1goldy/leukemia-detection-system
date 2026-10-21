@@ -28,7 +28,7 @@ def download_model_if_needed(filename):
             with st.spinner(f'Downloading {filename} from cloud storage... Please wait.'):
                 gdown.download(url, filename, quiet=False)
 
-# Sidebar model selection matching your Good, Better, Best tiers
+# Sidebar model selection matching your tiers
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
     ("Model 3: Best", "Model 2: Better", "Model 1: Good")
@@ -69,14 +69,16 @@ if uploaded_file is not None:
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
             
-            # Apply correct preprocessing based on the selected model architecture
+            # Apply exact preprocessing corresponding to each model architecture
             if "Best" in model_choice:
                 # EfficientNet preprocessing
                 img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+            elif "Better" in model_choice:
+                # DenseNet preprocessing
+                img_array = tf.keras.applications.densenet.preprocess_input(img_array)
             else:
-                # Custom CNNs (Good & Better) have built-in Rescaling layers, 
-                # so we pass standard pixel values.
-                pass
+                # Good model (ResNet) preprocessing
+                img_array = tf.keras.applications.resnet.preprocess_input(img_array)
                 
             img_array = np.expand_dims(img_array, axis=0)
             
