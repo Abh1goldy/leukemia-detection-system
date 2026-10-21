@@ -14,9 +14,9 @@ st.write("Upload a single cropped blood smear cell image to classify it using yo
 
 # Google Drive File IDs for automatic cloud downloading
 MODEL_DRIVE_IDS = {
-    'model_1_basic.keras': '1TNy4kEd4FWxNI4THpVtxkuoTIYl44ixh',
-    'model_2_good.keras': '1gyUlobzsKHFNKkxtJk9tB7_jawOJAcsc',
-    'model_3_best.keras': '1DMU4QOimnkLp63_GWqBoC0c-bP4tEI2h'
+    'model_1_good.keras': '13Q_sb-Vf2H_1YPGjZpXp17ZLLVKDY93s',
+    'model_2_better.keras': '1e6JvyAtOS8PCj8SEiRpWrYWIeNMimM-X',
+    'model_3_best.keras': '1-72rwJhrpt_QQssHgxoc0bz4_WelKa4Z'
 }
 
 # Function to download models if they are missing (for Streamlit Cloud)
@@ -28,25 +28,25 @@ def download_model_if_needed(filename):
             with st.spinner(f'Downloading {filename} from cloud storage... Please wait.'):
                 gdown.download(url, filename, quiet=False)
 
-# Sidebar model selection
+# Sidebar model selection matching your Good, Better, Best tiers
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: MobileNetV2", "Model 2: Deeper Custom CNN", "Model 1: Baseline Custom CNN")
+    ("Model 3: Best", "Model 2: Better", "Model 1: Good")
 )
 
 # Load the selected model with caching and auto-download support
 @st.cache_resource
 def load_selected_model(choice):
-    if "Model 3" in choice:
+    if "Best" in choice:
         filename = 'model_3_best.keras'
         download_model_if_needed(filename)
         return load_model(filename)
-    elif "Model 2" in choice:
-        filename = 'model_2_good.keras'
+    elif "Better" in choice:
+        filename = 'model_2_better.keras'
         download_model_if_needed(filename)
         return load_model(filename)
     else:
-        filename = 'model_1_basic.keras'
+        filename = 'model_1_good.keras'
         download_model_if_needed(filename)
         return load_model(filename)
 
@@ -82,7 +82,7 @@ if uploaded_file is not None:
         st.write(f"**Raw Prediction Score:** {prediction:.4f}")
         
         # Threshold logic: High score = ALL, Low score = HEM
-        if prediction >= 0.80:
+        if prediction >= 0.85:
             st.error(f"⚠️ **Result: ALL (Leukemia - Malignant Cell)** [Confidence: {prediction * 100:.2f}%]")
         elif prediction >= 0.75:
             st.warning(f"⚠️ **Result: Borderline / Uncertain Cell** [Score: {prediction:.4f}] — *Recommended for Pathologist Review*")
