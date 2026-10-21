@@ -28,27 +28,30 @@ def download_model_if_needed(filename):
             with st.spinner(f'Downloading {filename} from cloud storage... Please wait.'):
                 gdown.download(url, filename, quiet=False)
 
-# Sidebar model selection matching your tiers
+# Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
     ("Model 3: Best", "Model 2: Better", "Model 1: Good")
 )
 
-# Load the selected model with caching and auto-download support
+# Load the selected model with custom_objects to resolve the Lambda layer serialization issue
 @st.cache_resource
 def load_selected_model(choice):
+    # Determine the correct preprocessing function based on model architecture
     if "Best" in choice:
         filename = 'model_3_best.keras'
-        download_model_if_needed(filename)
-        return load_model(filename)
+        prep_func = tf.keras.applications.efficientnet.preprocess_input
     elif "Better" in choice:
         filename = 'model_2_better.keras'
-        download_model_if_needed(filename)
-        return load_model(filename)
+        prep_func = tf.keras.applications.densenet.preprocess_input
     else:
         filename = 'model_1_good.keras'
-        download_model_if_needed(filename)
-        return load_model(filename)
+        prep_func = tf.keras.applications.resnet.preprocess_input
+
+    download_model_if_needed(filename)
+    
+    # Pass the custom function reference so Keras can deserialize the Lambda layer successfully
+    return load_model(filename, custom_objects={'preprocess_input': prep_func})
 
 try:
     model = load_selected_model(model_choice)
@@ -71,13 +74,10 @@ if uploaded_file is not None:
             
             # Apply exact preprocessing corresponding to each model architecture
             if "Best" in model_choice:
-                # EfficientNet preprocessing
                 img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
             elif "Better" in model_choice:
-                # DenseNet preprocessing
                 img_array = tf.keras.applications.densenet.preprocess_input(img_array)
             else:
-                # Good model (ResNet) preprocessing
                 img_array = tf.keras.applications.resnet.preprocess_input(img_array)
                 
             img_array = np.expand_dims(img_array, axis=0)
