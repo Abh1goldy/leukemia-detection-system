@@ -31,19 +31,19 @@ def download_model_if_needed(filename):
 # Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: Best (EfficientNet)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
+    ("Model 3: Best", "Model 2: Better", "Model 1: Good")
 )
 
-# Helper function to get correct preprocessing function per architecture
+# Helper function to get custom object preprocessing reference for model loading
 def get_preprocess_function(choice):
-    if "Best" in choice or "EfficientNet" in choice:
+    if "Best" in choice:
         return tf.keras.applications.efficientnet.preprocess_input
-    elif "Better" in choice or "DenseNet" in choice:
+    elif "Better" in choice:
         return tf.keras.applications.densenet.preprocess_input
     else:
         return tf.keras.applications.resnet.preprocess_input
 
-# Load the selected model with dynamic custom_objects
+# Load the selected model with dynamic custom_objects support
 @st.cache_resource
 def load_selected_model(choice):
     if "Best" in choice:
@@ -54,14 +54,11 @@ def load_selected_model(choice):
         filename = 'model_1_good.keras'
 
     download_model_if_needed(filename)
-    
-    # Get the specific preprocessing function for custom object deserialization
     prep_func = get_preprocess_function(choice)
     
     try:
         return load_model(filename, custom_objects={'preprocess_input': prep_func})
     except Exception:
-        # Fallback if model doesn't require custom_objects
         return load_model(filename)
 
 try:
@@ -81,15 +78,21 @@ if uploaded_file is not None:
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
             
-            # Dynamically apply the exact preprocessing function for the selected model
-            preprocess_func = get_preprocess_function(model_choice)
-            img_array = preprocess_func(img_array)
+            # Apply preprocessing conditionally per model architecture
+            if "Best" in model_choice:
+                # Model 3 has Lambda preprocessing built-in; keep raw values
+                pass
+            elif "Better" in model_choice:
+                img_array = tf.keras.applications.densenet.preprocess_input(img_array)
+            else:
+                img_array = tf.keras.applications.resnet.preprocess_input(img_array)
+                
             img_array = np.expand_dims(img_array, axis=0)
             
             # Run prediction
             score = float(model.predict(img_array, verbose=0)[0][0])
             
-        # Display Results
+        # Display Results matching your Colab evaluation outputs
         st.subheader("Analysis Results:")
         st.write(f"**Active Model:** {model_choice}")
         st.write(f"**Model score for ALL class:** {score:.4f}")
