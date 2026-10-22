@@ -29,25 +29,35 @@ def download_model_if_needed(filename):
         with st.spinner(f'Downloading fresh {filename} from cloud storage... Please wait.'):
             gdown.download(url, filename, quiet=False)
 
-# Sidebar model selection (Pure individual models)
+# Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
     ("Model 3: Best (EfficientNet)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
 )
 
+# Dummy handler to safely bypass Lambda layer deserialization errors
+def dummy_preprocess(x):
+    return x
+
+# Load only the active model on demand to save memory and prevent key errors
 @st.cache_resource
-def load_all_models():
-    models = {}
-    for key, filename in [('model1', 'model_1_good.keras'), ('model2', 'model_2_better.keras'), ('model3', 'model_3_best.keras')]:
-        download_model_if_needed(filename)
-        # compile=False bypasses Lambda layer deserialization crash safely
-        models[key] = load_model(filename, compile=False)
-    return models
+def load_selected_model(choice):
+    if "Best" in choice:
+        filename = 'model_3_best.keras'
+    elif "Better" in choice:
+        filename = 'model_2_better.keras'
+    else:
+        filename = 'model_1_good.keras'
+
+    download_model_if_needed(filename)
+    
+    # Load with compile=False and dummy custom objects
+    return load_model(filename, custom_objects={'preprocess_input': dummy_preprocess}, compile=False)
 
 try:
-    loaded_models = load_all_models()
+    model = load_selected_model(model_choice)
 except Exception as e:
-    st.error(f"Error loading model files. Details: {e}")
+    st.error(f"Error loading model file. Details: {e}")
 
 # Image uploader widget
 uploaded_file = st.file_uploader("Choose a single blood cell image (.jpg, .jpeg, .png, .bmp)", type=["jpg", "jpeg", "png", "bmp"])
@@ -62,20 +72,20 @@ if uploaded_file is not None:
             img_array = np.array(img_resized, dtype=np.float32)
             img_array_expanded = np.expand_dims(img_array, axis=0)
             
-            # Run inference strictly based on the selected model architecture
+            # Apply matching external preprocessing and set specific thresholds
             if "Best" in model_choice:
-                m3_array = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded.copy())
-                score = float(loaded_models['model3'].predict(m3_array, verbose=0)[0][0])
-                threshold = 0.40  # Threshold calibrated for EfficientNet
+                img_processed = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded)
+                threshold = 0.40
             elif "Better" in model_choice:
-                m2_array = tf.keras.applications.densenet.preprocess_input(img_array_expanded.copy())
-                score = float(loaded_models['model2'].predict(m2_array, verbose=0)[0][0])
+                img_processed = tf.keras.applications.densenet.preprocess_input(img_array_expanded)
                 threshold = 0.75
             else:
-                m1_array = tf.keras.applications.resnet.preprocess_input(img_array_expanded.copy())
-                score = float(loaded_models['model1'].predict(m1_array, verbose=0)[0][0])
+                img_processed = tf.keras.applications.resnet.preprocess_input(img_array_expanded)
                 threshold = 0.75
-
+                
+            # Run prediction on the active model
+            score = float(model.predict(img_processed, verbose=0)[0][0])
+            
         # Display Results
         st.subheader("Analysis Results:")
         st.write(f"**Active Model:** {model_choice}")
