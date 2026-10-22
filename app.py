@@ -29,10 +29,10 @@ def download_model_if_needed(filename):
         with st.spinner(f'Downloading fresh {filename} from cloud storage... Please wait.'):
             gdown.download(url, filename, quiet=False)
 
-# Sidebar model selection
+# Sidebar model selection (Pure individual models)
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: Best (Ensemble)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
+    ("Model 3: Best (EfficientNet)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
 )
 
 @st.cache_resource
@@ -40,7 +40,7 @@ def load_all_models():
     models = {}
     for key, filename in [('model1', 'model_1_good.keras'), ('model2', 'model_2_better.keras'), ('model3', 'model_3_best.keras')]:
         download_model_if_needed(filename)
-        # Using compile=False bypasses missing custom function deserialization errors
+        # compile=False bypasses Lambda layer deserialization crash safely
         models[key] = load_model(filename, compile=False)
     return models
 
@@ -62,36 +62,26 @@ if uploaded_file is not None:
             img_array = np.array(img_resized, dtype=np.float32)
             img_array_expanded = np.expand_dims(img_array, axis=0)
             
-            # Model 1 prediction (ResNet)
-            m1_array = tf.keras.applications.resnet.preprocess_input(img_array_expanded.copy())
-            score_1 = float(loaded_models['model1'].predict(m1_array, verbose=0)[0][0])
-            
-            # Model 2 prediction (DenseNet)
-            m2_array = tf.keras.applications.densenet.preprocess_input(img_array_expanded.copy())
-            score_2 = float(loaded_models['model2'].predict(m2_array, verbose=0)[0][0])
-            
-            # Model 3 prediction (EfficientNet)
-            m3_array = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded.copy())
-            score_3 = float(loaded_models['model3'].predict(m3_array, verbose=0)[0][0])
-
-            # Selection logic
+            # Run inference strictly based on the selected model architecture
             if "Best" in model_choice:
-                # Use Ensemble weighted score so Model 3 never fails on edge cases
-                final_score = (score_1 * 0.45) + (score_2 * 0.45) + (score_3 * 0.10)
-                threshold = 0.50
+                m3_array = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded.copy())
+                score = float(loaded_models['model3'].predict(m3_array, verbose=0)[0][0])
+                threshold = 0.40  # Threshold calibrated for EfficientNet
             elif "Better" in model_choice:
-                final_score = score_2
+                m2_array = tf.keras.applications.densenet.preprocess_input(img_array_expanded.copy())
+                score = float(loaded_models['model2'].predict(m2_array, verbose=0)[0][0])
                 threshold = 0.75
             else:
-                final_score = score_1
+                m1_array = tf.keras.applications.resnet.preprocess_input(img_array_expanded.copy())
+                score = float(loaded_models['model1'].predict(m1_array, verbose=0)[0][0])
                 threshold = 0.75
 
         # Display Results
         st.subheader("Analysis Results:")
         st.write(f"**Active Model:** {model_choice}")
-        st.write(f"**Model score for ALL class:** {final_score:.4f}")
+        st.write(f"**Model score for ALL class:** {score:.4f}")
         
-        if final_score >= threshold:
-            st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {final_score:.4f}]")
+        if score >= threshold:
+            st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
         else:
-            st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {final_score:.4f}]")
+            st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {score:.4f}]")
