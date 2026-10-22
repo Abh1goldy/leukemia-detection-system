@@ -98,8 +98,8 @@ if uploaded_file is not None:
         st.write(f"**Active Model:** {model_choice}")
         st.write(f"**Model score for ALL class:** {score:.4f}")
         
-        # Dynamic threshold: 0.35 for Model 3 (EfficientNet), 0.75 for Models 1 and 2
-        threshold = 0.35 if "Best" in model_choice else 0.75
+        # Dynamic threshold: 0.40 for Model 3 (EfficientNet), 0.75 for Models 1 and 2
+        threshold = 0.40 if "Best" in model_choice else 0.75
         
         if score >= threshold:
             st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
