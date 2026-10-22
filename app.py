@@ -19,14 +19,16 @@ MODEL_DRIVE_IDS = {
     'model_3_best.keras': '1-72rwJhrpt_QQssHgxoc0bz4_WelKa4Z'
 }
 
-# Function to download models if missing
+# Function to force-download a fresh copy and clear old cached files
 def download_model_if_needed(filename):
-    if not os.path.exists(filename):
-        file_id = MODEL_DRIVE_IDS.get(filename)
-        if file_id:
-            url = f'https://drive.google.com/uc?id={file_id}'
-            with st.spinner(f'Downloading {filename} from cloud storage... Please wait.'):
-                gdown.download(url, filename, quiet=False)
+    file_id = MODEL_DRIVE_IDS.get(filename)
+    if file_id:
+        url = f'https://drive.google.com/uc?id={file_id}'
+        # Remove old cached version if it exists to prevent stale cache issues
+        if os.path.exists(filename):
+            os.remove(filename)
+        with st.spinner(f'Downloading fresh {filename} from cloud storage... Please wait.'):
+            gdown.download(url, filename, quiet=False)
 
 # Sidebar model selection
 model_choice = st.sidebar.selectbox(
