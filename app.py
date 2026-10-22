@@ -40,10 +40,8 @@ def load_all_models():
     models = {}
     for key, filename in [('model1', 'model_1_good.keras'), ('model2', 'model_2_better.keras'), ('model3', 'model_3_best.keras')]:
         download_model_if_needed(filename)
-        try:
-            models[key] = load_model(filename)
-        except Exception:
-            models[key] = load_model(filename)
+        # Using compile=False bypasses missing custom function deserialization errors
+        models[key] = load_model(filename, compile=False)
     return models
 
 try:
