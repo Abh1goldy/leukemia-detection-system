@@ -89,7 +89,7 @@ if uploaded_file is not None:
         st.write(f"**Model score for ALL class:** {score:.4f}")
         
         # Standard threshold: score >= 0.50 is ALL, else HEM
-        if score >= 0.50:
+        if score >= 0.45:
             st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
         else:
             st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {score:.4f}]")
