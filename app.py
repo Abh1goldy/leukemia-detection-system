@@ -12,11 +12,11 @@ st.set_page_config(page_title="Leukemia Detection System", page_icon="🔬", lay
 st.title("🔬 Automated Leukemia Detection System")
 st.write("Upload a single cropped blood smear cell image to classify it using your trained deep learning models.")
 
-# Google Drive File IDs for automatic cloud downloading
+# Final Google Drive File IDs for automatic cloud downloading
 MODEL_DRIVE_IDS = {
-    'model_1_good.keras': '13Q_sb-Vf2H_1YPGjZpXp17ZLLVKDY93s',
-    'model_2_better.keras': '1e6JvyAtOS8PCj8SEiRpWrYWIeNMimM-X',
-    'model_3_best.keras': '1-72rwJhrpt_QQssHgxoc0bz4_WelKa4Z'
+    'model_1_good.keras': '1-Je_Hj_ogFN3XIRf-2ypR3gIatarVPHN',
+    'model_2_better.keras': '1Qp13Az-fX8CfpytnXr6oPEzod2wRAWU_',
+    'model_3_best.keras': '1H0tcjDQB1d2y-Qfr-om-Acmli8H14SQm'
 }
 
 # Function to force-download a fresh copy and clear old cached files
@@ -32,7 +32,7 @@ def download_model_if_needed(filename):
 # Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: Best (EfficientNet)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
+    ("Model 3: Best (EfficientNetV2)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
 )
 
 # Dummy handler to safely bypass Lambda layer deserialization errors
@@ -72,16 +72,13 @@ if uploaded_file is not None:
             img_array = np.array(img_resized, dtype=np.float32)
             img_array_expanded = np.expand_dims(img_array, axis=0)
             
-            # Apply matching external preprocessing and set specific thresholds
+            # Architecture-specific preprocessing
             if "Best" in model_choice:
-                img_processed = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded)
-                threshold = 0.40
+                img_processed = tf.keras.applications.efficientnet_v2.preprocess_input(img_array_expanded)
             elif "Better" in model_choice:
                 img_processed = tf.keras.applications.densenet.preprocess_input(img_array_expanded)
-                threshold = 0.75
             else:
                 img_processed = tf.keras.applications.resnet.preprocess_input(img_array_expanded)
-                threshold = 0.75
                 
             # Run prediction on the active model
             score = float(model.predict(img_processed, verbose=0)[0][0])
@@ -91,7 +88,8 @@ if uploaded_file is not None:
         st.write(f"**Active Model:** {model_choice}")
         st.write(f"**Model score for ALL class:** {score:.4f}")
         
-        if score >= threshold:
+        # Standard threshold: score >= 0.50 is ALL, else HEM
+        if score >= 0.50:
             st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
         else:
             st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {score:.4f}]")
