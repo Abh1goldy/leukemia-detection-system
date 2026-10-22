@@ -98,7 +98,7 @@ if uploaded_file is not None:
         st.write(f"**Active Model:** {model_choice}")
         st.write(f"**Model score for ALL class:** {score:.4f}")
         
-        if score >= 0.75:
+        if score <= 0.75:
             st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
         else:
             st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {score:.4f}]")
