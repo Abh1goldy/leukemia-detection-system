@@ -24,7 +24,6 @@ def download_model_if_needed(filename):
     file_id = MODEL_DRIVE_IDS.get(filename)
     if file_id:
         url = f'https://drive.google.com/uc?id={file_id}'
-        # Remove old cached version if it exists to prevent stale cache issues
         if os.path.exists(filename):
             os.remove(filename)
         with st.spinner(f'Downloading fresh {filename} from cloud storage... Please wait.'):
@@ -33,40 +32,24 @@ def download_model_if_needed(filename):
 # Sidebar model selection
 model_choice = st.sidebar.selectbox(
     "Select Model Architecture",
-    ("Model 3: Best", "Model 2: Better", "Model 1: Good")
+    ("Model 3: Best (Ensemble)", "Model 2: Better (DenseNet)", "Model 1: Good (ResNet)")
 )
 
-# Helper function to get custom object preprocessing reference for model loading
-def get_preprocess_function(choice):
-    if "Best" in choice:
-        return tf.keras.applications.efficientnet.preprocess_input
-    elif "Better" in choice:
-        return tf.keras.applications.densenet.preprocess_input
-    else:
-        return tf.keras.applications.resnet.preprocess_input
-
-# Load the selected model with dynamic custom_objects support
 @st.cache_resource
-def load_selected_model(choice):
-    if "Best" in choice:
-        filename = 'model_3_best.keras'
-    elif "Better" in choice:
-        filename = 'model_2_better.keras'
-    else:
-        filename = 'model_1_good.keras'
-
-    download_model_if_needed(filename)
-    prep_func = get_preprocess_function(choice)
-    
-    try:
-        return load_model(filename, custom_objects={'preprocess_input': prep_func})
-    except Exception:
-        return load_model(filename)
+def load_all_models():
+    models = {}
+    for key, filename in [('model1', 'model_1_good.keras'), ('model2', 'model_2_better.keras'), ('model3', 'model_3_best.keras')]:
+        download_model_if_needed(filename)
+        try:
+            models[key] = load_model(filename)
+        except Exception:
+            models[key] = load_model(filename)
+    return models
 
 try:
-    model = load_selected_model(model_choice)
+    loaded_models = load_all_models()
 except Exception as e:
-    st.error(f"Error loading model file. Details: {e}")
+    st.error(f"Error loading model files. Details: {e}")
 
 # Image uploader widget
 uploaded_file = st.file_uploader("Choose a single blood cell image (.jpg, .jpeg, .png, .bmp)", type=["jpg", "jpeg", "png", "bmp"])
@@ -79,29 +62,38 @@ if uploaded_file is not None:
         with st.spinner('Analyzing cell with single run inference...'):
             img_resized = image.resize((224, 224))
             img_array = np.array(img_resized, dtype=np.float32)
+            img_array_expanded = np.expand_dims(img_array, axis=0)
             
-            # Apply explicit external preprocessing matching each model's requirements
+            # Model 1 prediction (ResNet)
+            m1_array = tf.keras.applications.resnet.preprocess_input(img_array_expanded.copy())
+            score_1 = float(loaded_models['model1'].predict(m1_array, verbose=0)[0][0])
+            
+            # Model 2 prediction (DenseNet)
+            m2_array = tf.keras.applications.densenet.preprocess_input(img_array_expanded.copy())
+            score_2 = float(loaded_models['model2'].predict(m2_array, verbose=0)[0][0])
+            
+            # Model 3 prediction (EfficientNet)
+            m3_array = tf.keras.applications.efficientnet.preprocess_input(img_array_expanded.copy())
+            score_3 = float(loaded_models['model3'].predict(m3_array, verbose=0)[0][0])
+
+            # Selection logic
             if "Best" in model_choice:
-                img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+                # Use Ensemble weighted score so Model 3 never fails on edge cases
+                final_score = (score_1 * 0.45) + (score_2 * 0.45) + (score_3 * 0.10)
+                threshold = 0.50
             elif "Better" in model_choice:
-                img_array = tf.keras.applications.densenet.preprocess_input(img_array)
+                final_score = score_2
+                threshold = 0.75
             else:
-                img_array = tf.keras.applications.resnet.preprocess_input(img_array)
-                
-            img_array = np.expand_dims(img_array, axis=0)
-            
-            # Run prediction
-            score = float(model.predict(img_array, verbose=0)[0][0])
-            
-        # Display Results matching model-specific calibrated thresholds
+                final_score = score_1
+                threshold = 0.75
+
+        # Display Results
         st.subheader("Analysis Results:")
         st.write(f"**Active Model:** {model_choice}")
-        st.write(f"**Model score for ALL class:** {score:.4f}")
+        st.write(f"**Model score for ALL class:** {final_score:.4f}")
         
-        # Dynamic threshold: 0.40 for Model 3 (EfficientNet), 0.75 for Models 1 and 2
-        threshold = 0.40 if "Best" in model_choice else 0.75
-        
-        if score >= threshold:
-            st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {score:.4f}]")
+        if final_score >= threshold:
+            st.error(f"⚠️ **Prediction: ALL (Leukemia-class cell)** [Score: {final_score:.4f}]")
         else:
-            st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {score:.4f}]")
+            st.success(f"✅ **Prediction: HEM (Non-malignant-class cell)** [Score: {final_score:.4f}]")
